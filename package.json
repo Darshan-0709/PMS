@@ -1,0 +1,22 @@
+{
+	"name": "nodeapi",
+	"version": "1.0.0",
+	"description": "REST API Login and Register Node.js with JWT",
+	"main": "server.js",
+	"scripts": {
+		"test": "server.js",
+		"start": "nodemon ./server.js"
+	},
+	"author": "",
+	"license": "ISC",
+	"dependencies": {
+		"bcryptjs": "^3.0.2",
+		"cookie-session": "^2.1.0",
+		"cors": "^2.8.5",
+		"express": "^4.21.2",
+		"jsonwebtoken": "^9.0.2",
+		"mysql2": "^3.12.0",
+		"pg": "^8.13.3",
+		"sequelize": "^6.37.6"
+	}
+}
