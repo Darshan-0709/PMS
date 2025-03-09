@@ -1,92 +1,107 @@
 const jwt = require("jsonwebtoken");
 const config = require("../config/auth.config.js");
 const db = require("../models/index.js");
+const { findStudent } = require("../controllers/student.controller.js");
 const User = db.user;
 
 verifyToken = (req, res, next) => {
-	let token = req.header("Authorization").split(" ")[1];
-	if (!token) {
-		return res.status(403).send({
-			message: "No token provided!"
-		});
-	}
-	// jwt.verify(token, config.secret, (err, decode))
-	jwt.verify(token, config.secret, (err, decoded) => {
-		if (err) {
-			return res.status(401).send({
-				message: "Unauthorized!",
-				error: err
-			});
-		}
-		req.userId = decoded.id;
-		next();
-	});
+  const header = req.header("Authorization");
+  if (!header) {
+    return res.status(401).send({
+      message: "No token provided!",
+    });
+  }
+  let token = header.split(" ")[1];
+  if (!token) {
+    return res.status(403).send({
+      message: "No token provided!",
+    });
+  }
+  jwt.verify(token, config.secret, async (err, decoded) => {
+    if (err) {
+      return res.status(401).send({ message: "Unauthorized!", error: err });
+    }
+    req.user = await User.findByPk(decoded.userId);
+    next();
+  });
 };
 
-isAdmin = async (req, res, next) => {
-	try {
-		const user = await User.findByPk(req.userId);
-		const roles = await user.getRoles();
-		for (let i = 0; i < roles.length; i++) {
-			if (roles[i].name === "admin") {
-				return next();
-			}
-		}
-		return res.status(403).send({
-			message: "Require Admin Role!"
-		});
-	} catch (error) {
-		return res.status(500).send({
-			message: "Unable to validate User role!"
-		});
-	}
+placementCellAdminAccess = async (req, res, next) => {
+  try {
+    if (req.user.type !== "placementCellAdmin") {
+      return res.status(403).send({
+        message: "Require Placement Cell Admin Role!",
+      });
+    }
+    const placementCell = await db.placementCell.findOne({
+      where: {
+        adminId: req.user.userId,
+      },
+    });
+    if (!placementCell) {
+      res.status(401).send({ message: "Unauthorized access!" });
+    }
+    req.placementCell = placementCell;
+    next();
+  } catch {
+    return res.status(500).send({
+      message: "Unable to validate Placement Cell Admin role!",
+    });
+  }
 };
 
-isModerator = async (req, res, next) => {
-	try {
-		const user = await User.findByPk(req.userId);
-		const roles = await user.getRoles();
-		for (let i = 0; i < roles.length; i++) {
-			if (roles[i].name === "moderator") {
-				return next();
-			}
-		}
-		return res.status(403).send({
-			message: "Require Moderator Role!"
-		});
-	} catch (error) {
-		return res.status(500).send({
-			message: "Unable to validate Moderator role!"
-		});
-	}
+studentAccess = async (req, res, next) => {
+  try {
+    if (req.user.type !== "student") {
+      return res.status(403).send({ message: "Require Student Role!" });
+    }
+    const student = await db.student.findByPk(req.user.userId);
+    if (!student) {
+      return res.status(401).send({ message: "Unauthorized access!" });
+    }
+    next();
+  } catch {
+    return res
+      .status(500)
+      .send({ message: "Unable to validate Student role!" });
+  }
 };
 
-isModeratorOrAdmin = async (req, res, next) => {
-	try {
-		const user = await User.findByPk(req.userId);
-		const roles = await user.getRoles();
-		for (let i = 0; i < roles.length; i++) {
-			if (roles[i].name === "moderator") {
-				return next();
-			}
-			if (roles[i].name === "admin") {
-				return next();
-			}
-		}
-		return res.status(403).send({
-			message: "Require Moderator or Admin Role!"
-		});
-	} catch (error) {
-		return res.status(500).send({
-			message: "Unable to validate Moderator or Admin role!"
-		});
-	}
+studentOrPCAccess = async (req, res, next) => {
+  try {
+    if (req.user.type !== "student" && req.user.type !== "placementCellAdmin") {
+      return res.status(403).send({ message: "Unauthorized access!0" });
+    }
+
+    const student = await db.student.findByPk(req.params.id, {
+      include: ["placementCell"],
+    });
+    console.log("student", student);
+
+    if (!student) {
+      return res.status(401).send({ message: "Unauthorized access!1" });
+    }
+
+    if (
+      req.user.userId === student.studentId ||
+      req.user.userId === student.placementCell.adminId
+    ) {
+      return next();
+    }
+
+    return res.status(401).send({ message: "Unauthorized access!2" });
+  } catch (error) {
+    console.error(error);
+    return res
+      .status(500)
+      .send({ message: "Unable to validate Student role!" });
+  }
 };
 
 const authJwt = {
-	verifyToken,
-	isAdmin,
-	isModerator,
-	isModeratorOrAdmin
+  verifyToken,
+  studentAccess,
+  placementCellAdminAccess,
+  studentOrPCAccess,
 };
 module.exports = authJwt;

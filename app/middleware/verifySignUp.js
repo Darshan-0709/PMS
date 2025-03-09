@@ -1,57 +1,54 @@
 const db = require("../models");
-const ROLES = db.ROLES;
+const TYPES = db.type;
 const User = db.user;
 
 checkDuplicateUsernameOrEmail = async (req, res, next) => {
-	console.log(req);
-	try {
-		// Username
-		let user = await User.findOne({
-			where: {
-				username: req.body.username
-			}
-		});
-		if (user) {
-			return res.status(400).send({
-				message: "Failed! Username is already in use!"
-			});
-		}
-		// Email
-		user = await User.findOne({
-			where: {
-				email: req.body.email
-			}
-		});
-		if (user) {
-			return res.status(400).send({
-				message: "Failed! Email is already in use!"
-			});
-		}
-		next();
-	} catch (error) {
-		return res.status(500).send({
-			message: "Unable to validate Username!",
-			error: `error: ${error}`,
-			req: `req: ${req.body}`
-		});
-	}
+  try {
+    // Username
+    let user = await User.findOne({
+      where: {
+        username: req.body.username,
+      },
+    });
+    if (user) {
+      return res.status(400).send({
+        message: "Failed! Username is already in use!",
+      });
+    }
+    // Email
+    user = await User.findOne({
+      where: {
+        email: req.body.email,
+      },
+    });
+    if (user) {
+      return res.status(409).send({
+        message: "Failed! Email is already in use!",
+      });
+    }
+    next();
+  } catch (error) {
+    return res.status(500).send({
+      message: "Unable to validate Username!",
+      error: `error: ${error}`,
+      req: `req: ${req.body}`,
+    });
+  }
 };
 
-checkRolesExisted = (req, res, next) => {
-	if (req.body.roles) {
-		for (let i = 0; i < req.body.roles.length; i++) {
-			if (!ROLES.includes(req.body.roles[i])) {
-				res.status(400).send({
-					message: "Failed! Role does not exist = " + req.body.roles[i]
-				});
-				return;
-			}
-		}
-	}
-	next();
+checkTypeExisted = (req, res, next) => {
+  if (req.body.type) {
+    if (!TYPES.includes(req.body.type)) {
+      res.status(400).send({
+        message: "Failed! type does not exist = " + req.body.type,
+      });
+      return;
+    }
+  }
+  next();
 };
 const verifySignUp = {
-	checkDuplicateUsernameOrEmail,
-	checkRolesExisted
+  checkDuplicateUsernameOrEmail,
+  checkTypeExisted,
 };
 module.exports = verifySignUp;
