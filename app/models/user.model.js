@@ -1,33 +1,75 @@
-module.exports = (sequelize, Sequelize) => {
-  const User = sequelize.define("users", {
-    userId: {
-      type: Sequelize.INTEGER,
-      autoIncrement: true,
+// models/user.model.js
+const { DataTypes } = require('sequelize');
+
+module.exports = (sequelize) => {
+  const User = sequelize.define('User', {
+    user_id: {
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
     username: {
-      type: Sequelize.STRING,
+      type: DataTypes.STRING(100),
       allowNull: false,
     },
     email: {
-      type: Sequelize.STRING,
+      type: DataTypes.STRING(100),
       allowNull: false,
       unique: true,
+      validate: {
+        isEmail: true,
+      },
     },
     password: {
-      type: Sequelize.STRING,
+      type: DataTypes.STRING(255),
       allowNull: false,
     },
     type: {
-      type: Sequelize.STRING,
+      type: DataTypes.ENUM('student', 'placement_cell', 'recruiter'),
       allowNull: false,
     },
-    isActive: {
-      type: Sequelize.BOOLEAN,
+    is_active: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true,
+    },
+    is_deleted: {
+      type: DataTypes.BOOLEAN,
       defaultValue: false,
-      allowNull: false,
     },
+  }, {
+    timestamps: true,
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
+    indexes: [
+      {
+        unique: true,
+        fields: ['email'],
+      },
+      {
+        fields: ['type'],
+      },
+    ],
   });
+
+  User.associate = (models) => {
+    User.hasOne(models.Student, {
+      foreignKey: 'student_id',
+      as: 'student_profile',
+      onDelete: 'CASCADE'
+    });
+    
+    User.hasOne(models.PlacementCell, {
+      foreignKey: 'admin_id',
+      as: 'admin_of_placement_cell',
+      onDelete: 'SET NULL'
+    });
+    
+    User.hasOne(models.Recruiter, {
+      foreignKey: 'representative_id',
+      as: 'recruiter_profile',
+      onDelete: 'SET NULL'
+    });
+  };
 
   return User;
 };

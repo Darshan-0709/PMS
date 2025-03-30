@@ -1,53 +1,43 @@
-const config = require("../config/db.config.js");
-const Sequelize = require("sequelize");
-const sequelize = new Sequelize(config.DB, config.USER, config.PASSWORD, {
-  host: config.HOST,
-  dialect: config.dialect,
-  operatorsAliases: false,
-  pool: {
-    max: config.pool.max,
-    min: config.pool.min,
-    acquire: config.pool.acquire,
-    idle: config.pool.idle,
-  },
-});
+const fs = require('fs');
+const path = require('path');
+const Sequelize = require('sequelize');
+const basename = path.basename(__filename);
 const db = {};
-db.Sequelize = Sequelize;
+
+const sequelize = new Sequelize(
+  process.env.DB_NAME,
+  process.env.DB_USER,
+  process.env.DB_PASSWORD,
+  {
+    host: process.env.DB_HOST,
+    dialect: 'postgres',
+    logging: false
+  }
+);
+
+// Load all model files
+fs.readdirSync(__dirname)
+  .filter(file => {
+    return (
+      file.indexOf('.') !== 0 &&
+      file !== basename &&
+      file.slice(-3) === '.js' &&
+      file.indexOf('.test.js') === -1
+    );
+  })
+  .forEach(file => {
+    const model = require(path.join(__dirname, file))(sequelize, Sequelize.DataTypes);
+    db[model.name] = model;
+  });
+
+// Setup associations
+Object.keys(db).forEach(modelName => {
+  if (db[modelName].associate) {
+    db[modelName].associate(db);
+  }
+});
+
 db.sequelize = sequelize;
-db.user = require("./user.model.js")(sequelize, Sequelize);
-db.placementCell = require("./placementCell.model.js")(sequelize, Sequelize);
-db.student = require("./student.modal.js")(sequelize, Sequelize);
+db.Sequelize = Sequelize;
 
-// associations - user_placementCell
-db.user.hasOne(db.placementCell, {
-  foreignKey: "adminId",
-  as: "placementCell",
-});
-
-db.placementCell.belongsTo(db.user, {
-  foreignKey: "adminId",
-  as: "admin",
-});
-
-// associations - student_user
-db.student.belongsTo(db.user, {
-  foreignKey: "studentId",
-  as: "user",
-});
-db.user.hasOne(db.student, {
-  foreignKey: "studentId",
-  as: "student",
-});
-
-// associations - student_placementCell
-db.placementCell.hasMany(db.student, {
-  foreignKey: "placementCellId",
-  as: "students",
-});
-db.student.belongsTo(db.placementCell, {
-  foreignKey: "placementCellId",
-  as: "placementCell",
-});
-
-db.TYPES = ["user", "placementCellAdmin", "student"];
 module.exports = db;

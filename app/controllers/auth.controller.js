@@ -1,75 +1,62 @@
-const db = require("../models");
-const config = require("../config/auth.config");
-const User = db.user;
-const jwt = require("jsonwebtoken");
-const bcrypt = require("bcryptjs");
-const { executeTypeHandler } = require("../utils/typeHandlers.utils");
+const { handleSuccess, handleError } = require('../utils/responseHandler');
+const AuthService = require('../services/auth.service');
+const PlacementCellService = require('../services/placementCell.service');
 
-exports.signup = async (req, res) => {
-  const transaction = await db.sequelize.transaction();
-  try {
-    const user = await User.create(
-      {
-        username: req.body.username,
-        email: req.body.email,
-        password: bcrypt.hashSync(req.body.password, 8),
-        type: req.body.type,
-      },
-      { transaction }
-    );
-
-    const profile = await executeTypeHandler(user, req, transaction);
-    await transaction.commit();
-    res.send({ message: "User registered successfully!", user, profile });
-  } catch (error) {
-    if (transaction) await transaction.rollback();
-    res.status(500).send({ message: error.message });
-  }
-};
-
-exports.signin = async (req, res) => {
-  try {
-    const user = await User.findOne({
-      where: {
-        email: req.body.email,
-      },
-    });
-    if (!user) {
-      return res.status(404).send({ message: "User Not found." });
-    }
-    const passwordIsValid = bcrypt.compareSync(
-      req.body.password,
-      user.password
-    );
-    if (!passwordIsValid) {
-      return res.status(401).send({
-        message: "Invalid Password!",
+module.exports = {
+  register: async (req, res) => {
+    try {
+      const result = await AuthService.registerUser(req.body);
+      
+      handleSuccess(res, {
+        statusCode: 201,
+        message: 'Registration successful',
+        data: {
+          userId: result.user.user_id,
+          type: result.user.type,
+          accessToken: result.token,
+          needsProfileCompletion: !result.user.is_profile_complete
+        }
       });
+    } catch (error) {
+      handleError(res, error);
     }
-    const token = jwt.sign(
-      { userId: user.userId, email: user.email },
-      config.secret,
-      { expiresIn: 86400 } // 24 hours
-    );
-    return res.status(200).send({
-      userId: user.userId,
-      username: user.username,
-      email: user.email,
-      type: user.type,
-      token: token,
-    });
-  } catch (error) {
-    return res.status(500).send({ message: error.message });
-  }
-};
+  },
+  
+  login: async (req, res) => {
+    try {
+      const tokens = await AuthService.loginUser(req.body);
+      handleSuccess(res, {
+        message: 'Login successful',
+        data: tokens
+      });
+    } catch (error) {
+      handleError(res, error);
+    }
+  },
 
-exports.signout = async (req, res) => {
-  try {
-    req.session = null;
-    return res.status(200).send({
-      message: "You've been signed out!",
-    });
-  } catch (err) {
-    this.next(err);
+  updateProfile: async (req, res) => {
+    try {
+      const updated = await PlacementCellService.updatePlacementCellProfile(
+        req.user.userId,
+        req.body
+      );
+      handleSuccess(res, {
+        message: 'Profile updated successfully',
+        data: updated
+      });
+    } catch (error) {
+      handleError(res, error);
+    }
+  },
+
+  verifyPlacementCell: async (req, res) => {
+    try {
+      await PlacementCellService.verifyPlacementCell(req.params.id);
+      handleSuccess(res, {
+        message: 'Placement cell verified successfully'
+      });
+    } catch (error) {
+      handleError(res, error);
+    }
   }
 };

@@ -1,19 +1,19 @@
-const { verifySignUp } = require("../middleware");
-const controller = require("../controllers/auth.controller");
 const express = require("express");
 const router = express.Router();
+const authController = require("../controllers/auth.controller");
+const validate = require("../middleware/validation.middleware");
+const authValidation = require("../validations/auth.validation");
 
-// Signup Route
 router.post(
-  "/signup",
-  [verifySignUp.checkDuplicateUsernameOrEmail],
-  controller.signup
+  "/register",
+  validate(authValidation.register, "body"),
+  authController.register
 );
 
-// Signin Route
-router.post("/signin", controller.signin);
+router.post(
+  "/login",
+  validate(authValidation.login, "body"),
+  authController.login
+);
 
-// Signout Route
-router.post("/signout", controller.signout);
-
-module.exports = router; // Export the router
+module.exports = router;

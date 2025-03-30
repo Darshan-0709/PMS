@@ -1,13 +1,22 @@
-const { authJwt } = require("../middleware");
-const controller = require("../controllers/placementCell.controller");
-const express = require("express");
+const express = require('express');
 const router = express.Router();
+const placementCellController = require('../controllers/placementCell.controller');
+const validate = require('../middleware/validation.middleware');
+const { authenticate, authorize } = require('../middleware/auth.middleware');
+const placementCellValidation = require('../validations/placementCell.validation');
 
-// Signup Route
 router.post(
-  "/:id",
-  [authJwt.verifyToken, authJwt.placementCellAdminAccess],
-  controller.setProfile
+  '/register',
+  validate(placementCellValidation.register, 'body'),
+  placementCellController.registerPlacementCell
 );
 
-module.exports = router; // Export the router
+router.put(
+  '/profile',
+  authenticate,
+  authorize('placement_cell'),
+  validate(placementCellValidation.updateProfile, 'body'),
+  placementCellController.updateProfile
+);
+
+module.exports = router;
