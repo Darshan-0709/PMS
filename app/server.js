@@ -1,83 +1,59 @@
 require('dotenv').config();
 const express = require('express');
-const morgan = require('morgan');
-const helmet = require('helmet');
+const bodyParser = require('body-parser');
 const cors = require('cors');
-const rateLimit = require('express-rate-limit');
-const { Sequelize } = require('sequelize');
-const errorHandler = require('./utils/errorHandler');
 const config = require('./config/config');
+const db = require('./models');
+const authRoutes = require('./routes/auth.routes');
 
 const app = express();
 
-// Database Configuration
-const env = process.env.NODE_ENV || 'development';
-const { database, username, password, host, dialect } = config[env];
-const sequelize = new Sequelize(database, username, password, {
-  host,
-  dialect,
-  logging: env === 'development' ? console.log : false,
-  pool: {
-    max: 5,
-    min: 0,
-    acquire: 30000,
-    idle: 10000
+// Middleware
+app.use(cors());
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+
+// Database Connection with Force Sync
+const connectDB = async () => {
+  try {
+    await db.sequelize.authenticate();
+    console.log('Database connection established');
+
+    // FORCE CREATE TABLES (Drops existing tables)
+    await db.sequelize.sync({ force: true });
+    console.log('All tables created successfully!');
+    
+  } catch (error) {
+    console.error('Database error:', error);
+    process.exit(1);
+  }
+};
+
+// Routes
+app.use('/api/auth', authRoutes);
+
+// Test Route to Verify Tables
+app.get('/api/check-tables', async (req, res) => {
+  try {
+    const tables = await db.sequelize.query(
+      "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'"
+    );
+    res.json({ tables: tables[0] });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 
-// Middleware
-app.use(morgan('dev'));
-app.use(helmet());
-app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
-}));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// Rate Limiting for Auth Routes
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100,
-  message: 'Too many requests from this IP, please try again later'
+// Error handling
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ error: 'Internal Server Error' });
 });
 
-// Routes
-app.use('/api/v1/auth', authLimiter, require('./routes/auth.routes'));
-app.use('/api/v1/placement-cell', require('./routes/placementCell.routes'));
-
-// Health Check
-app.get('/health', (req, res) => res.json({ status: 'OK' }));
-
-// Error Handling Middleware
-app.use(errorHandler);
-
-// 404 Handler
-app.use((req, res) => {
-  res.status(404).json({ error: 'Endpoint not found' });
+// Start Server
+const PORT = config.port || 3000;
+app.listen(PORT, async () => {
+  await connectDB();
+  console.log(`Server running on port ${PORT}`);
+  console.log('Database tables recreated on startup');
 });
-
-// Database Sync and Server Start
-const PORT = process.env.PORT || 3000;
-
-// Initialize Models and Start Server
-const db = require('./models');
-db.sequelize.authenticate()
-  .then(() => {
-    console.log('Database connected');
-    return db.sequelize.sync({ force: false });
-  })
-  .then(() => {
-    app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-      console.log(`Environment: ${env}`);
-    });
-  })
-  .catch(err => {
-    console.error('Database connection failed:', err);
-    process.exit(1);
-  });
-
-module.exports = app;

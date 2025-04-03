@@ -5,7 +5,7 @@ module.exports = (sequelize) => {
   const PlacementCell = sequelize.define(
     "PlacementCell",
     {
-      placement_cell_id: { // Fixed typo (was placement_cell_id)
+      placement_cell_id: {
         type: DataTypes.UUID,
         defaultValue: DataTypes.UUIDV4,
         primaryKey: true,
@@ -14,12 +14,28 @@ module.exports = (sequelize) => {
         type: DataTypes.STRING(100),
         allowNull: false,
       },
-      domain: {
-        type: DataTypes.STRING(100),
+      domains: {
+        type: DataTypes.TEXT,
         allowNull: false,
-        unique: true,
-        validate: {
-          is: /^[^\s@]+@([^\s@]+\.)+[^\s@]+$/,
+        get() {
+          const rawValue = this.getDataValue("domains");
+          try {
+            return rawValue ? JSON.parse(rawValue) : [];
+          } catch (error) {
+            console.error("Error parsing domains:", error.message);
+            return [];
+          }
+        },
+        set(value) {
+          if (!Array.isArray(value)) {
+            throw new Error("Domains must be an array.");
+          }
+          value.forEach((domain) => {
+            if (!/^@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(domain)) {
+              throw new Error(`Invalid domain format: ${domain}`);
+            }
+          });
+          this.setDataValue("domains", JSON.stringify(value)); // Ensure it's stored as a JSON string
         },
       },
       branches: {
@@ -59,16 +75,6 @@ module.exports = (sequelize) => {
     PlacementCell.belongsTo(models.User, {
       foreignKey: "admin_id",
       as: "admin",
-    });
-
-    PlacementCell.hasMany(models.Student, {
-      foreignKey: "placement_cell_id",
-      as: "students",
-    });
-
-    PlacementCell.hasMany(models.DriveRequest, { // Added missing association
-      foreignKey: "placement_cell_id",
-      as: "drive_requests",
     });
   };
 

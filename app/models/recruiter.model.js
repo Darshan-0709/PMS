@@ -16,6 +16,15 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING(100),
       allowNull: false,
     },
+    representative_id: { // Updated foreign key field
+      type: DataTypes.UUID,
+      allowNull: false,
+      references: {
+        model: 'Users', // Assuming the table name is 'Users'
+        key: 'user_id',
+      },
+      onDelete: 'CASCADE',
+    },
     description: DataTypes.TEXT,
     website: DataTypes.STRING(100),
     email: {
@@ -40,10 +49,10 @@ module.exports = (sequelize) => {
       as: 'representative',
     });
 
-    Recruiter.hasMany(models.DriveRequest, { // Added missing association
-      foreignKey: 'recruiter_id',
-      as: 'drive_requests',
-    });
+    // Recruiter.hasMany(models.DriveRequest, { // Added missing association
+    //   foreignKey: 'recruiter_id',
+    //   as: 'drive_requests',
+    // });
   };
 
   return Recruiter;

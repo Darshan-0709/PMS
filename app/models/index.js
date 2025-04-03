@@ -1,43 +1,44 @@
-const fs = require('fs');
-const path = require('path');
-const Sequelize = require('sequelize');
-const basename = path.basename(__filename);
-const db = {};
+// models/index.js
+const { Sequelize } = require("sequelize");
+const config = require("../config/config");
 
+// Initialize Sequelize with complete configuration
 const sequelize = new Sequelize(
-  process.env.DB_NAME,
-  process.env.DB_USER,
-  process.env.DB_PASSWORD,
+  config.db.database,
+  config.db.username,
+  config.db.password,
   {
-    host: process.env.DB_HOST,
-    dialect: 'postgres',
-    logging: false
+    host: config.db.host,
+    dialect: 'postgres', // Explicitly set
+    logging: config.db.logging,
+    pool: {
+      max: 5,
+      min: 0,
+      acquire: 30000,
+      idle: 10000
+    }
   }
 );
 
-// Load all model files
-fs.readdirSync(__dirname)
-  .filter(file => {
-    return (
-      file.indexOf('.') !== 0 &&
-      file !== basename &&
-      file.slice(-3) === '.js' &&
-      file.indexOf('.test.js') === -1
-    );
-  })
-  .forEach(file => {
-    const model = require(path.join(__dirname, file))(sequelize, Sequelize.DataTypes);
-    db[model.name] = model;
-  });
+// Model imports
+const User = require('./user.model.js')(sequelize);
+const PlacementCell = require('./placementCell.model.js')(sequelize);
+const Student = require('./student.model.js')(sequelize);
+const Recruiter = require('./recruiter.model.js')(sequelize);
 
-// Setup associations
-Object.keys(db).forEach(modelName => {
-  if (db[modelName].associate) {
-    db[modelName].associate(db);
-  }
-});
+// Set up associations
+User.associate?.({ PlacementCell, Student, Recruiter });
+PlacementCell.associate?.({ User, Student });
+Student.associate?.({ User, PlacementCell });
+Recruiter.associate?.({ User });
 
-db.sequelize = sequelize;
-db.Sequelize = Sequelize;
+const db = {
+  sequelize,
+  Sequelize,
+  User,
+  PlacementCell,
+  Student,
+  Recruiter
+};
 
 module.exports = db;
