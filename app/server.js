@@ -1,10 +1,11 @@
-require('dotenv').config();
-const express = require('express');
-const bodyParser = require('body-parser');
-const cors = require('cors');
-const config = require('./config/config');
-const db = require('./models');
-const authRoutes = require('./routes/auth.routes');
+require("dotenv").config();
+const express = require("express");
+const bodyParser = require("body-parser");
+const cors = require("cors");
+const config = require("./config/config");
+const db = require("./models");
+const authRoutes = require("./routes/auth.routes");
+const studentRoutes = require("./routes/student.routes");
 
 const app = express();
 
@@ -17,23 +18,24 @@ app.use(bodyParser.urlencoded({ extended: true }));
 const connectDB = async () => {
   try {
     await db.sequelize.authenticate();
-    console.log('Database connection established');
+    console.log("Database connection established");
 
     // FORCE CREATE TABLES (Drops existing tables)
-    await db.sequelize.sync({ force: true });
-    console.log('All tables created successfully!');
-    
+    // await db.sequelize.sync({ force: true });
+    await db.sequelize.sync({ alter: true }); // Use alter to update the tables without dropping them
+    console.log("All tables created successfully!");
   } catch (error) {
-    console.error('Database error:', error);
+    console.error("Database error:", error);
     process.exit(1);
   }
 };
 
 // Routes
-app.use('/api/auth', authRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/student", studentRoutes);
 
 // Test Route to Verify Tables
-app.get('/api/check-tables', async (req, res) => {
+app.get("/api/check-tables", async (req, res) => {
   try {
     const tables = await db.sequelize.query(
       "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'"
@@ -44,10 +46,14 @@ app.get('/api/check-tables', async (req, res) => {
   }
 });
 
+app.get("/", (req, res) => {
+  res.send("Welcome to the Placement Management System API!");
+});
+
 // Error handling
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).json({ error: 'Internal Server Error' });
+  res.status(500).json({ error: "Internal Server Error" });
 });
 
 // Start Server
@@ -55,5 +61,5 @@ const PORT = config.port || 3000;
 app.listen(PORT, async () => {
   await connectDB();
   console.log(`Server running on port ${PORT}`);
-  console.log('Database tables recreated on startup');
+  console.log("Database tables recreated on startup");
 });
