@@ -66,19 +66,19 @@ module.exports = (sequelize) => {
   User.associate = (models) => {
     User.hasOne(models.Student, {
       foreignKey: "student_id",
-      as: "student_profile",
+      as: "student",
       onDelete: "CASCADE",
     });
 
     User.hasOne(models.PlacementCell, {
       foreignKey: "admin_id",
-      as: "admin_of_placement_cell",
+      as: "placement_cell",
       onDelete: "SET NULL",
     });
 
     User.hasOne(models.Recruiter, {
       foreignKey: "representative_id",
-      as: "recruiter_profile",
+      as: "recruiter",
       onDelete: "SET NULL",
     });
   };
