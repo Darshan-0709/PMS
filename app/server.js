@@ -9,6 +9,8 @@ const studentRoutes = require("./routes/student.routes");
 const placementCellRoutes = require("./routes/placementCell.routes");
 const recruiterRoutes = require("./routes/recruiter.routes");
 const eligibilityCriteriaRoutes = require("./routes/eligibilityCriteria.routes");
+const jobRequestRoutes = require("./routes/jobRequest.routes");
+
 
 const app = express();
 
@@ -39,6 +41,8 @@ app.use("/api/student", studentRoutes);
 app.use("/api/placement-cell", placementCellRoutes);
 app.use("/api/recruiter", recruiterRoutes);
 app.use("/api/eligibility-criteria", eligibilityCriteriaRoutes);
+app.use("/api/job-requests", jobRequestRoutes);
+
 
 // Test Route to Verify Tables
 app.get("/api/check-tables", async (req, res) => {
